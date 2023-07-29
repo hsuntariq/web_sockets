@@ -1,44 +1,61 @@
-import { useEffect, useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import {useEffect, useState} from 'react'
 import io from 'socket.io-client';
+import "./styles.css"
 const socket = io.connect('http://localhost:3001');
+const App = () => {
+  const [message, setMessage] = useState('');
+  const [sentMessages, setSentMessages] = useState([]);
+  const [receivedMessages, setReceivedMessages] = useState([]);
 
+  useEffect(() => {
+    socket.on('received_message', (data) => {
 
+      setReceivedMessages((prevState) => [
+        ...prevState,
+        { id: Date.now(), message: data.message,sent:false },
+      ]);
+    });
 
-function App() {
-  const [message, setMessage] = useState('')
-  const [sendMessages, setSendMessages] = useState([]);
-  const [messages, setMessages] = useState([]);
+    return () => {
+      socket.off('received_message');
+    };
+  }, []);
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    socket.emit("send_message", { message: message });
-    setSendMessages([...sendMessages,message])
+    // Emit the message and add it as a sent message to the state
+    socket.emit('send_message', { message: message });
+    setSentMessages((prevState) => [
+      ...prevState,
+      { id: Date.now(), message: message,sent:true },
+    ]);
     setMessage('');
-    console.log(sendMessages)
-  }
-  
-  useEffect(() => {
-    socket.on("received_message", ((data) => {
-      setMessages([...messages, data.message]);
-      // alert(data.message)
-      // console.log(messages)
-    }))
-  }, [socket,messages]);
+  };
+
+  const allMessages = [...sentMessages, ...receivedMessages].sort(
+    (a, b) => a.id - b.id
+  );
   return (
     <>
-        <form>
-          <input value={message} onChange={(e)=>setMessage(e.target.value)} type="text" placeholder="message..." />
-          <button onClick={handleSubmit}>Send</button>
-        {messages?.map((msg) => {
-          return (
-              <>
-              <h4>{msg}</h4>
-              </>
-            )
-          })}
-        </form>
+      <div className="p-4 container-fluid col-12">
+      <form>
+        <input className='form-control' value={message} onChange={(e)=>setMessage(e.target.value)} type="text" placeholder="Enter your message..." />
+        <button className='btn btn-dark my-3 w-100' onClick={handleSubmit}>Send</button>
+
+      </form>
+        <div className="container">
+            {allMessages.map((msg) => (
+            <div
+              key={msg.id}
+              className={msg.sent ? 'sent-message' : 'received-message'}
+              >
+              {console.log(msg.sent)}
+              <h5>{msg.message}</h5>
+            </div>
+          ))}
+      </div>
+      {/* {console.log(messages)} */}
+      </div>
     </>
   )
 }
